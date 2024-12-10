@@ -1,4 +1,5 @@
 # C++11 含义变化的关键字
+[toc]
 
 ---
 
@@ -6,7 +7,7 @@
 C++ 98标准/C++03标准：auto被解释为一个自动存储变量的关键字，也就是申明一块临时的变量内存。
 C++11：auto被解释为自动推倒变量类型
 
-### class
+### class(类中几个关键字的变化)
 #### default
 [详解博客](https://blog.csdn.net/sevenjoin/article/details/88314531)
 
