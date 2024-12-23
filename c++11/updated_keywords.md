@@ -1,4 +1,5 @@
 # C++11 含义变化的关键字
+> reference: https://en.cppreference.com/w/cpp/11
 - [C++11 含义变化的关键字](#c11-含义变化的关键字)
     - [auto](#auto)
     - [class](#class)
