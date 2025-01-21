@@ -1,8 +1,8 @@
 # C++ 存储相关
-> reference: 
-> https://en.cppreference.com/w/cpp/language/storage_duration#Storage_duration
-> https://en.cppreference.com/w/cpp/memory
-> https://en.cppreference.com/w/cpp/language/memory_model
+> reference: <br>
+> https://en.cppreference.com/w/cpp/language/storage_duration#Storage_duration <br>
+> https://en.cppreference.com/w/cpp/memory <br>
+> https://en.cppreference.com/w/cpp/language/memory_model <br>
 > https://www.cnblogs.com/sparkdev/p/8410350.html
 
 
