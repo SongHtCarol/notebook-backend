@@ -1,0 +1,2 @@
+- [paxos](paxos/basic.md)
+- [raft](raft/basic.md)
