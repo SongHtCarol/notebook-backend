@@ -1,4 +1,4 @@
-- [summary](summary.md)
-- [tx](tx.md)
+- [概述](summary.md)
+- [数据库事务](tx.md)
   - [mysql](mysql/toc.md)
   - [redis](redis/toc.md)
