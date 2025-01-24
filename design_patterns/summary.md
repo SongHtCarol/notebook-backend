@@ -1,0 +1,1 @@
+<img src='/design_patterns/img/summary.png'>
