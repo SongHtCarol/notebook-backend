@@ -13,5 +13,8 @@
 分布式环境引入数据复制后，不同数据节点间可能出现，无法依靠应用程序自身解决的数据不一致的情况。
 
 ### 一致性解决方案
-- [Paxos](/distributed/consensus_algorithm/paxos/basic.md)
-- [Raft](/distributed/consensus_algorithm/raft/basic.md)
+- Paxos
+  - [算法原理](/distributed/consensus_algorithm/paxos/basic.md)
+  - [工程应用](/distributed/consensus_algorithm/paxos/apply.md)
+- Raft
+  - [算法原理](/distributed/consensus_algorithm/raft/basic.md)
