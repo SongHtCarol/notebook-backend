@@ -174,13 +174,56 @@ CFT共识算法：可以处理非拜占庭错误的情况，如 网络/磁盘故
 BFT共识算法：可以处理非拜占庭错误的情况，也可以处理部分节点出现拜占庭错误的情况，常被用于区块链系统。PBFT算法、PoW算法都属于BFT共识算法。
 
 #### 一致性解决方案
-- Paxos: 同一时刻有多个节点可以写入，也只需要通知到大多数节点，有更高的吞吐量
-- Raft
+- [Paxos](/distributed/consensus_algorithm/paxos/basic.md)
+- [Raft](/distributed/consensus_algorithm/raft/basic.md)
 - 2PC: 同步先确保通知到所有节点再写入，性能瓶颈很容易出现在主节点上
 - 3PC: 相比于2PC，降低了事务失败回滚的概率，但是增加了数据不一致的风险，以及增加了事务延迟
-- Lease机制：针对网络拥塞或瞬断的情况下，出现双主情况的解法
+- Lease机制: 由授权者授予分布式环境一段时间内的承诺。针对网络拥塞或瞬断的情况下，Lease机制可以进一步处理双主脑裂的情况
 - Quorum NWR
-- MVCC
-- Gossip：一种去中心化、容错而又最终一致性的算法
+  - N-同一份数据的拷贝份数；W-更新一个数据对象的时候需要确保成功更新的份数；R-读取一个数据需要读取的拷贝的份数
+  - `W>N/2`;`W+R>N`
+  - 写操作要确保成功的份数高于一份数据拷贝总份数的一半
+  - 写操作加上读操作的总份数要高于同一份数据拷贝的总份数
+  - 例子: TFS(TaoBao File System) 采取N=3，W=3的配置策略
+    <table>
+        <tr>
+            <th>N</th>
+            <th>W</th>
+            <th>R</th>
+            <th>说明</th>
+        </tr>
+        <tr>
+            <td>1</td>
+            <td></td>
+            <td></td>
+            <td>N=1，单点问题，无法满足高可用</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td></td>
+            <td></td>
+            <td>一个节点宕掉后，仍然是单点</td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td>2，3</td>
+            <td>1，2，3</td>
+            <td>读越大，读性能越差；写越大，写性能越差</td>
+        </tr>
+        <tr>
+            <td>4</td>
+            <td></td>
+            <td></td>
+            <td>服务器节点成本高</td>
+        </tr>
+    </table>
+- MVCC(多版本并发控制)
+  - 不同数据库对MVCC的具体实现有差异
+  - MySQL的InnoDB：`create version` `delete version`
+    - 插入时记录`create version`
+    - 更新时先将旧记录标记删除，记录`delete version`，然后插入一行新记录`create version`加一
+    - 删除时记录`delete version`
+- Gossip: 一种去中心化、容错而又最终一致性的算法
   - Gossip协议的主要用途就是信息传播和扩散：即把一些发生的事件传播到全世界。它们也被用于数据库复制，信息扩散，集群成员身份确认，故障探测等。
   - 基于Gossip协议的一些有名的系统：Apache Cassandra，Redis（Cluster模式），Consul等。
+  - 传播时间收敛在O(Log(N))以内，N是节点数量
