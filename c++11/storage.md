@@ -23,7 +23,7 @@
 ---
 
 ## C++ 内存分布
-<img src='/c++/img/c++storage.jpg'>
+<img src='/c++11/img/c++storage.jpg'>
 
 ## storage duration
 - static storage duration
