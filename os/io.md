@@ -414,3 +414,98 @@ struct Node {
 - **空间开销较大**，每个节点需要存储两个指针。
 
 在实际开发中，双向链表常用于实现高级数据结构（如 LRU 缓存、双向队列）或需要双向遍历的场景。
+
+
+## 为什么非阻塞io性能更好
+**非阻塞 I/O（Non-blocking I/O）** 是一种高效的 I/O 模型，相较于传统的阻塞 I/O，它在高并发场景下性能更好。以下是详细的原因分析：
+
+
+### **一、阻塞 I/O 的问题**
+#### 1. **阻塞 I/O 的工作方式**
+- 当线程执行 I/O 操作（如读取文件、网络请求）时，如果数据未准备好，线程会被阻塞，直到数据就绪。
+- 示例：
+  ```c
+  char buffer[1024];
+  int n = read(fd, buffer, sizeof(buffer)); // 阻塞直到数据就绪
+  ```
+
+#### 2. **阻塞 I/O 的性能瓶颈**
+- **线程阻塞**：每个 I/O 操作都会阻塞一个线程，导致线程资源浪费。
+- **高并发场景**：当并发连接数增加时，需要创建大量线程，导致：
+  - 线程切换开销大。
+  - 内存占用高（每个线程需要独立的栈空间）。
+  - CPU 利用率低（大量时间浪费在线程切换和等待上）。
+
+
+### **二、非阻塞 I/O 的优势**
+#### 1. **非阻塞 I/O 的工作方式**
+- 当线程执行 I/O 操作时，如果数据未准备好，立即返回错误（如 `EAGAIN` 或 `EWOULDBLOCK`），线程可以继续执行其他任务。
+- 示例：
+  ```c
+  char buffer[1024];
+  int n = read(fd, buffer, sizeof(buffer)); // 非阻塞，立即返回
+  if (n == -1 && errno == EAGAIN) {
+      // 数据未就绪，继续执行其他任务
+  }
+  ```
+
+#### 2. **非阻塞 I/O 的性能优势**
+- **高效利用线程**：
+  - 线程不会被阻塞，可以处理多个 I/O 操作。
+  - 一个线程可以管理多个连接（如使用 `epoll` 或 `select`）。
+- **减少线程切换**：
+  - 少量线程即可处理大量并发连接，减少上下文切换开销。
+- **高并发支持**：
+  - 适合高并发场景（如 Web 服务器、实时通信系统）。
+- **低延迟**：
+  - I/O 操作立即返回，减少等待时间。
+
+
+### **三、非阻塞 I/O 的实现方式**
+#### 1. **轮询（Polling）**
+- 使用 `select()` 或 `poll()` 检查多个文件描述符的状态。
+- 示例：
+  ```c
+  fd_set read_fds;
+  FD_ZERO(&read_fds);
+  FD_SET(fd, &read_fds);
+  select(fd + 1, &read_fds, NULL, NULL, NULL); // 检查文件描述符状态
+  ```
+
+#### 2. **事件驱动（Event-driven）**
+- 使用 `epoll`（Linux）或 `kqueue`（BSD）监听 I/O 事件。
+- 示例：
+  ```c
+  int epoll_fd = epoll_create1(0);
+  struct epoll_event event;
+  event.events = EPOLLIN;
+  event.data.fd = fd;
+  epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event); // 监听文件描述符
+  epoll_wait(epoll_fd, events, MAX_EVENTS, -1);   // 等待事件
+  ```
+
+#### 3. **异步 I/O（Asynchronous I/O）**
+- 使用 `aio_read()` 或 `aio_write()` 发起异步 I/O 操作。
+- 示例：
+  ```c
+  struct aiocb aio;
+  aio.aio_fildes = fd;
+  aio.aio_buf = buffer;
+  aio.aio_nbytes = sizeof(buffer);
+  aio_read(&aio); // 发起异步读操作
+  ```
+
+
+### **四、非阻塞 I/O 的适用场景**
+1. **高并发服务器**：
+   - 如 Web 服务器（Nginx）、实时通信系统（WebSocket）。
+2. **高性能数据库**：
+   - 如 Redis、Memcached。
+3. **实时数据处理**：
+   - 如消息队列（Kafka）、流处理系统（Flink）。
+
+
+### **五、总结**
+- **非阻塞 I/O** 通过避免线程阻塞，提高了 CPU 和线程的利用率。
+- 在高并发场景下，非阻塞 I/O 显著减少了线程切换和资源占用，提升了系统性能。
+- 通过事件驱动模型（如 `epoll`）或异步 I/O，可以进一步优化非阻塞 I/O 的性能。
