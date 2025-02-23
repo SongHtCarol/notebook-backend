@@ -31,6 +31,23 @@
       - [1. **`error` 接口**](#1-error-接口)
       - [2. **`fmt.Stringer` 接口**](#2-fmtstringer-接口)
     - [**总结**](#总结)
+  - [context](#context)
+    - [1. **Context 的作用**](#1-context-的作用)
+    - [2. **Context 的核心接口**](#2-context-的核心接口)
+    - [3. **创建 Context**](#3-创建-context)
+      - [（1）`context.Background()`](#1contextbackground)
+      - [（2）`context.TODO()`](#2contexttodo)
+      - [（3）`context.WithCancel(parent Context)`](#3contextwithcancelparent-context)
+      - [（4）`context.WithTimeout(parent Context, timeout time.Duration)`](#4contextwithtimeoutparent-context-timeout-timeduration)
+      - [（5）`context.WithDeadline(parent Context, d time.Time)`](#5contextwithdeadlineparent-context-d-timetime)
+      - [（6）`context.WithValue(parent Context, key, val interface{})`](#6contextwithvalueparent-context-key-val-interface)
+    - [4. **使用 Context**](#4-使用-context)
+      - [（1）取消操作](#1取消操作)
+      - [（2）超时控制](#2超时控制)
+      - [（3）传递值](#3传递值)
+    - [5. **Context 的注意事项**](#5-context-的注意事项)
+    - [6. **Context 的应用场景**](#6-context-的应用场景)
+    - [总结](#总结-1)
 
 ---
 
@@ -429,4 +446,183 @@ fmt.Println(User{"Alice"})  // 输出：User: Alice
 | 类型断言       | 动态检查接口值的实际类型                      |
 | 多态设计       | 统一处理不同实现，提升代码扩展性              |
 
-掌握接口的灵活应用，是编写高效、可维护 Go 代码的关键。
+## context
+在 Go 语言中，`context` 是一个非常重要的包，用于管理 goroutine 的生命周期、取消信号、超时和传递请求范围的值。它通常用于控制并发操作，特别是在处理请求时，能够优雅地取消或超时 goroutine。
+
+
+### 1. **Context 的作用**
+`context` 的主要用途包括：
+- **取消操作**：通过 `context` 传递取消信号，通知 goroutine 停止工作。
+- **超时控制**：设置操作的超时时间，避免 goroutine 无限期运行。
+- **传递值**：在请求范围内传递键值对数据（例如请求 ID、用户信息等）。
+
+
+### 2. **Context 的核心接口**
+`context` 包的核心是 `Context` 接口，定义如下：
+```go
+type Context interface {
+    Deadline() (deadline time.Time, ok bool) // 返回上下文截止时间
+    Done() <-chan struct{}                  // 返回一个 channel，用于接收取消信号
+    Err() error                             // 返回上下文取消的原因
+    Value(key interface{}) interface{}      // 获取上下文中的值
+}
+```
+
+
+### 3. **创建 Context**
+`context` 包提供了几种创建 `Context` 的方式：
+
+#### （1）`context.Background()`
+- 返回一个空的 `Context`，通常用作根上下文。
+- 适用于主函数、初始化或测试。
+
+```go
+ctx := context.Background()
+```
+
+#### （2）`context.TODO()`
+- 返回一个空的 `Context`，通常用于尚未确定上下文类型的场景。
+- 与 `context.Background()` 类似，但语义上表示“待实现”。
+
+```go
+ctx := context.TODO()
+```
+
+#### （3）`context.WithCancel(parent Context)`
+- 基于父上下文创建一个可取消的 `Context`。
+- 返回一个新的 `Context` 和一个取消函数 `cancel`，调用 `cancel` 会取消该上下文及其子上下文。
+
+```go
+ctx, cancel := context.WithCancel(context.Background())
+defer cancel() // 确保在函数退出时取消上下文
+```
+
+#### （4）`context.WithTimeout(parent Context, timeout time.Duration)`
+- 基于父上下文创建一个带有超时的 `Context`。
+- 超时后，上下文会自动取消。
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+defer cancel()
+```
+
+#### （5）`context.WithDeadline(parent Context, d time.Time)`
+- 基于父上下文创建一个带有截止时间的 `Context`。
+- 到达截止时间后，上下文会自动取消。
+
+```go
+deadline := time.Now().Add(2 * time.Second)
+ctx, cancel := context.WithDeadline(context.Background(), deadline)
+defer cancel()
+```
+
+#### （6）`context.WithValue(parent Context, key, val interface{})`
+- 基于父上下文创建一个包含键值对的 `Context`。
+- 用于在请求范围内传递数据。
+
+```go
+ctx := context.WithValue(context.Background(), "userID", 123)
+```
+
+
+### 4. **使用 Context**
+#### （1）取消操作
+通过 `context.WithCancel` 创建的 `Context` 可以手动取消 goroutine。
+
+```go
+func worker(ctx context.Context) {
+    for {
+        select {
+        case <-ctx.Done():
+            fmt.Println("Worker canceled:", ctx.Err())
+            return
+        default:
+            fmt.Println("Working...")
+            time.Sleep(500 * time.Millisecond)
+        }
+    }
+}
+
+func main() {
+    ctx, cancel := context.WithCancel(context.Background())
+    go worker(ctx)
+
+    time.Sleep(2 * time.Second)
+    cancel() // 取消 goroutine
+
+    time.Sleep(1 * time.Second)
+}
+```
+
+#### （2）超时控制
+通过 `context.WithTimeout` 可以设置操作的超时时间。
+
+```go
+func worker(ctx context.Context) {
+    select {
+    case <-ctx.Done():
+        fmt.Println("Worker timed out:", ctx.Err())
+    case <-time.After(3 * time.Second):
+        fmt.Println("Work done!")
+    }
+}
+
+func main() {
+    ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+    defer cancel()
+
+    worker(ctx)
+}
+```
+
+#### （3）传递值
+通过 `context.WithValue` 可以在请求范围内传递数据。
+
+```go
+func worker(ctx context.Context) {
+    if userID := ctx.Value("userID"); userID != nil {
+        fmt.Println("User ID:", userID)
+    } else {
+        fmt.Println("User ID not found")
+    }
+}
+
+func main() {
+    ctx := context.WithValue(context.Background(), "userID", 123)
+    worker(ctx)
+}
+```
+
+
+### 5. **Context 的注意事项**
+- **不要滥用 `context.WithValue`**：
+  - `context` 的主要目的是传递取消信号和超时控制，而不是作为通用的数据存储。
+  - 传递的值应该是请求范围的数据（例如请求 ID、用户信息等），而不是函数参数或全局状态。
+
+- **确保取消函数被调用**：
+  - 使用 `defer cancel()` 确保在函数退出时取消上下文，避免资源泄漏。
+
+- **Context 是不可变的**：
+  - 每次调用 `WithCancel`、`WithTimeout`、`WithValue` 等函数时，都会返回一个新的 `Context`，而不是修改原有的 `Context`。
+
+- **避免传递 `nil` Context**：
+  - 如果不知道使用哪个 `Context`，可以使用 `context.TODO()` 或 `context.Background()`。
+
+
+### 6. **Context 的应用场景**
+- **HTTP 请求处理**：
+  - 在 HTTP 服务器中，可以使用 `context` 控制请求的超时和取消。
+  - 例如，`http.Request` 的 `Context()` 方法返回请求的上下文。
+
+- **数据库操作**：
+  - 在数据库查询时，可以使用 `context` 设置超时或取消操作。
+
+- **微服务调用**：
+  - 在微服务架构中，可以使用 `context` 传递请求范围的数据（如跟踪 ID）。
+
+- **并发任务管理**：
+  - 在启动多个 goroutine 时，可以使用 `context` 统一管理它们的生命周期。
+
+
+### 总结
+`context` 是 Go 语言中用于管理 goroutine 生命周期、取消信号、超时和传递请求范围值的重要工具。它的核心思想是通过链式传递 `Context`，实现并发操作的控制和数据传递。正确使用 `context` 可以编写出更健壮、高效的并发程序。
